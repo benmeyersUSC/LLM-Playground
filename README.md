@@ -8,15 +8,20 @@ cd LLM-Playground
 python3 -m pip install -r requirements.txt
 ```
 
-## RUN
-
-```bash
-streamlit run app.py
-```
-
 ## UPDATE
 
 ```bash
 git pull
 streamlit run app.py
 ```
+
+## RUN
+
+```bash
+streamlit run app.py
+```
+
+## TURN OFF
+
+**Control *C***
+
