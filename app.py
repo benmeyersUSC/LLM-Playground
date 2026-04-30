@@ -19,7 +19,7 @@ import token_microscope
 
 st.set_page_config(
     page_title="LLM Playground",
-    page_icon="◐",
+    page_icon="⌜Lang⌝",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -34,7 +34,7 @@ if not ensure_setup():
 st.markdown(
     """
     <div class="hero">
-      <div class="hero-mark">◐</div>
+      <div class="hero-mark">⌜Lang⌝</div>
       <div class="hero-text">
         <h1>LLM Playground</h1>
         <p>Two views into the machine. Pick one.</p>

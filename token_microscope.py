@@ -19,22 +19,39 @@ The model is Qwen2.5-0.5B-Instruct, downloaded on first use to ~/.cache/huggingf
 import streamlit as st
 import numpy as np
 import os
+from pathlib import Path
 
 MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+MODEL_DIR = Path(__file__).parent / "models" / "qwen2.5-0.5b-instruct"
 
 
 @st.cache_resource(show_spinner=False)
 def load_model():
-    """Lazy import + load. Cached for the session."""
+    """Load from local ./models/ dir; download there on first use."""
     from transformers import AutoModelForCausalLM, AutoTokenizer
     import torch
 
-    tok = AutoTokenizer.from_pretrained(MODEL_NAME)
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Check if model files are already present locally
+    local_files_exist = (MODEL_DIR / "config.json").exists()
+    source = MODEL_DIR if local_files_exist else MODEL_NAME
+    kwargs = {} if local_files_exist else {"cache_dir": MODEL_DIR}
+
+    tok = AutoTokenizer.from_pretrained(str(source), **kwargs)
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
+        str(source),
         torch_dtype=torch.float32,
         device_map="cpu",
+        **kwargs,
     )
+
+    # If we just downloaded to cache_dir, the files landed in a snapshot subdir.
+    # Save them flat to MODEL_DIR so next load skips the download entirely.
+    if not local_files_exist:
+        tok.save_pretrained(str(MODEL_DIR))
+        model.save_pretrained(str(MODEL_DIR))
+
     model.eval()
     return tok, model, torch
 
@@ -140,7 +157,13 @@ def render():
     )
 
     # Model load
-    with st.spinner(f"loading {MODEL_NAME} (first time downloads ~1GB)..."):
+    local_ready = (MODEL_DIR / "config.json").exists()
+    spinner_msg = (
+        "loading model from ./models/ ..."
+        if local_ready
+        else "downloading Qwen2.5-0.5B-Instruct (~1 GB) → ./models/ — one time only..."
+    )
+    with st.spinner(spinner_msg):
         try:
             tokenizer, model, torch = load_model()
         except Exception as e:

@@ -18,6 +18,7 @@ import streamlit as st
 import os
 import json
 import uuid
+import traceback
 import anthropic
 
 
@@ -51,23 +52,49 @@ def _init_state():
         st.session_state.show_payload = False
     if "branches" not in st.session_state:
         st.session_state.branches = {}  # name -> snapshot
+    if "last_api_debug" not in st.session_state:
+        st.session_state.last_api_debug = None
+    if "last_error" not in st.session_state:
+        st.session_state.last_error = None
+
+
+def _extract_api_message(e) -> str:
+    """Pull the human-readable message out of an Anthropic SDK exception."""
+    try:
+        return e.body["error"]["message"]
+    except Exception:
+        return str(e)
 
 
 def _send_to_anthropic():
     """Call API with current messages, append assistant reply."""
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    st.session_state.last_error = None  # clear any previous error on new attempt
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # Anthropic API requires alternating user/assistant and starting with user.
-    # If the last message is assistant, the API treats it as a prefill — neat
-    # but confusing for beginners, so we'll just refuse and let them know.
-    msgs = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages
-            if m["role"] in ("user", "assistant") and m["content"].strip()]
+    print("\n" + "=" * 60)
+    print("[DEBUG] _send_to_anthropic() called")
+    print(f"[DEBUG] API key present: {'YES (' + api_key[:14] + '...)' if api_key else 'NO — check .env!'}")
+
+    if not api_key:
+        st.session_state.last_error = "No API key found. Check your .env file."
+        return
+
+    msgs = [
+        {"role": m["role"], "content": m["content"]}
+        for m in st.session_state.messages
+        if m["role"] in ("user", "assistant") and m["content"].strip()
+    ]
+
+    print(f"[DEBUG] Messages being sent: {len(msgs)}")
+    for i, m in enumerate(msgs):
+        preview = m["content"][:80].replace("\n", "\\n")
+        print(f"[DEBUG]   [{i}] {m['role']}: {preview!r}")
 
     if not msgs:
-        st.error("Need at least one user message to send.")
+        st.session_state.last_error = "Need at least one user message to send."
         return
     if msgs[0]["role"] != "user":
-        st.error("First message must be from user (Anthropic requirement). Edit or delete the leading assistant turn.")
+        st.session_state.last_error = "First message must be from user (Anthropic requirement). Edit or delete the leading assistant turn."
         return
 
     kwargs = {
@@ -79,13 +106,71 @@ def _send_to_anthropic():
     if st.session_state.system_prompt.strip():
         kwargs["system"] = st.session_state.system_prompt
 
+    print(f"[DEBUG] Payload → model={kwargs['model']}, max_tokens={kwargs['max_tokens']}, temp={kwargs['temperature']}, msgs={len(msgs)}")
+    print("[DEBUG] SENDING REQUEST to api.anthropic.com/v1/messages ...")
+
     try:
-        with st.spinner("calling claude..."):
+        client = anthropic.Anthropic(api_key=api_key)
+        with st.status("Calling Claude...", expanded=True) as status:
+            st.write(f"**Model:** `{kwargs['model']}`")
+            st.write(f"**Sending** {len(msgs)} message(s) · max {kwargs['max_tokens']} tokens · temp {kwargs['temperature']}")
             resp = client.messages.create(**kwargs)
+            st.write(f"**Response received!** Stop reason: `{resp.stop_reason}` · {resp.usage.input_tokens} in / {resp.usage.output_tokens} out tokens")
+            status.update(label="Done ✓", state="complete", expanded=False)
+
         text = "".join(b.text for b in resp.content if hasattr(b, "text"))
+
+        print(f"[DEBUG] RESPONSE RECEIVED — stop_reason={resp.stop_reason}")
+        print(f"[DEBUG] Usage: {resp.usage.input_tokens} input tokens, {resp.usage.output_tokens} output tokens")
+        print(f"[DEBUG] Response text preview: {text[:120]!r}")
+
         st.session_state.messages.append(_new_msg("assistant", text))
+        st.session_state.last_api_debug = {
+            "model": kwargs["model"],
+            "msgs_sent": len(msgs),
+            "stop_reason": resp.stop_reason,
+            "input_tokens": resp.usage.input_tokens,
+            "output_tokens": resp.usage.output_tokens,
+            "response_preview": text[:300],
+        }
+
+        print("[DEBUG] Message appended to session — conversation updated.")
+        print("=" * 60)
+
+    except anthropic.AuthenticationError as e:
+        msg = _extract_api_message(e)
+        print(f"[DEBUG] !! AuthenticationError: {msg}")
+        traceback.print_exc()
+        print("=" * 60)
+        st.session_state.last_error = f"**Authentication error** — {msg}\n\nCheck your API key in `.env`."
+    except anthropic.PermissionDeniedError as e:
+        msg = _extract_api_message(e)
+        print(f"[DEBUG] !! PermissionDeniedError: {msg}")
+        traceback.print_exc()
+        print("=" * 60)
+        st.session_state.last_error = f"**Permission denied** — {msg}"
+    except anthropic.BadRequestError as e:
+        msg = _extract_api_message(e)
+        print(f"[DEBUG] !! BadRequestError: {msg}")
+        traceback.print_exc()
+        print("=" * 60)
+        st.session_state.last_error = f"**Bad request** — {msg}"
+    except anthropic.RateLimitError as e:
+        msg = _extract_api_message(e)
+        print(f"[DEBUG] !! RateLimitError: {msg}")
+        traceback.print_exc()
+        print("=" * 60)
+        st.session_state.last_error = f"**Rate limited** — {msg}\n\nWait a moment and try again."
+    except anthropic.APIConnectionError as e:
+        print(f"[DEBUG] !! APIConnectionError: {e}")
+        traceback.print_exc()
+        print("=" * 60)
+        st.session_state.last_error = "**Connection error** — could not reach api.anthropic.com. Check your internet connection."
     except Exception as e:
-        st.error(f"API error: {e}")
+        print(f"[DEBUG] !! Unexpected error: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        print("=" * 60)
+        st.session_state.last_error = f"**Unexpected error** (`{type(e).__name__}`) — {e}"
 
 
 def _build_payload_preview():
@@ -297,6 +382,26 @@ def render():
             if new_msg.strip():
                 st.session_state.messages.append(_new_msg("user", new_msg.strip()))
                 st.rerun()
+
+    # ---- API error (persists across rerun) ----
+    if st.session_state.last_error:
+        st.error(st.session_state.last_error)
+
+    # ---- Last API call debug info ----
+    if st.session_state.last_api_debug:
+        d = st.session_state.last_api_debug
+        with st.expander("Last API call debug", expanded=False):
+            st.markdown(
+                f'<div class="debug-panel">'
+                f'<span class="debug-key">model</span> <span class="debug-val">{d["model"]}</span> &nbsp;·&nbsp; '
+                f'<span class="debug-key">messages sent</span> <span class="debug-val">{d["msgs_sent"]}</span> &nbsp;·&nbsp; '
+                f'<span class="debug-key">stop</span> <span class="debug-val">{d["stop_reason"]}</span><br>'
+                f'<span class="debug-key">tokens</span> <span class="debug-val">{d["input_tokens"]} in / {d["output_tokens"]} out</span><br>'
+                f'<span class="debug-key">response preview</span><br>'
+                f'<span class="debug-val" style="white-space:pre-wrap;">{d["response_preview"]}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     # ---- Payload inspector ----
     if st.session_state.show_payload:

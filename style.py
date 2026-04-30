@@ -1,6 +1,6 @@
 """
 Visual identity: a scientific instrument crossed with an editorial layout.
-Warm off-white, deep ink, single accent in oxidized red.
+Dark mode — deep navy base, electric indigo accent, warm amber for warnings.
 Serif display + monospace for data — this is a *playground*, not a product.
 """
 
@@ -16,22 +16,28 @@ def inject_css():
 
         <style>
         :root {
-          --paper: #f5f1e8;
-          --paper-dim: #ebe5d6;
-          --ink: #1a1814;
-          --ink-soft: #4a463e;
-          --ink-faint: #8a847a;
-          --rule: #cfc7b3;
-          --accent: #b4391c;
-          --accent-soft: #d97757;
-          --signal: #2d5d3a;
-          --warn: #9a6b1c;
+          --paper: #0e1117;
+          --paper-dim: #161b27;
+          --ink: #e2e8f0;
+          --ink-soft: #94a3b8;
+          --ink-faint: #475569;
+          --rule: #2d3748;
+          --accent: #818cf8;
+          --accent-soft: #a5b4fc;
+          --signal: #34d399;
+          --warn: #fbbf24;
         }
 
         /* Override Streamlit defaults */
         .stApp {
-          background: var(--paper);
+          background: var(--paper) !important;
           color: var(--ink);
+        }
+        .stApp > div, section[data-testid="stSidebar"] {
+          background: var(--paper) !important;
+        }
+        .block-container {
+          background: var(--paper) !important;
         }
 
         html, body, [class*="css"], .stMarkdown, .stMarkdown p,
@@ -91,7 +97,7 @@ def inject_css():
         .mode-card.active {
           border-color: var(--accent);
           background: var(--paper);
-          box-shadow: 0 0 0 1px var(--accent);
+          box-shadow: 0 0 0 1px var(--accent), 0 0 16px rgba(129, 140, 248, 0.12);
         }
         .mode-title {
           font-family: 'JetBrains Mono', monospace !important;
@@ -126,42 +132,42 @@ def inject_css():
 
         /* Buttons */
         .stButton > button {
-          background: var(--paper);
-          color: var(--ink);
-          border: 1px solid var(--ink);
-          border-radius: 2px;
+          background: var(--paper-dim) !important;
+          color: var(--ink) !important;
+          border: 1px solid var(--rule) !important;
+          border-radius: 2px !important;
           font-family: 'JetBrains Mono', monospace !important;
-          font-size: 0.78rem;
-          letter-spacing: 0.1em;
-          font-weight: 500;
-          padding: 0.5rem 1rem;
-          transition: all 0.12s ease;
+          font-size: 0.78rem !important;
+          letter-spacing: 0.1em !important;
+          font-weight: 500 !important;
+          padding: 0.5rem 1rem !important;
+          transition: all 0.12s ease !important;
         }
         .stButton > button:hover {
-          background: var(--ink);
-          color: var(--paper);
-          border-color: var(--ink);
+          background: var(--accent) !important;
+          color: #fff !important;
+          border-color: var(--accent) !important;
         }
         .stButton > button:focus {
-          box-shadow: none !important;
-          outline: 2px solid var(--accent);
-          outline-offset: 2px;
+          box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.4) !important;
+          outline: none !important;
         }
 
         /* Primary action button */
         .stButton > button[kind="primary"] {
-          background: var(--accent);
-          color: var(--paper);
-          border-color: var(--accent);
+          background: var(--accent) !important;
+          color: #fff !important;
+          border-color: var(--accent) !important;
         }
         .stButton > button[kind="primary"]:hover {
-          background: var(--ink);
-          border-color: var(--ink);
+          background: var(--accent-soft) !important;
+          border-color: var(--accent-soft) !important;
+          color: #0e1117 !important;
         }
 
         /* Inputs */
-        .stTextInput input, .stTextArea textarea, .stSelectbox > div > div {
-          background: var(--paper) !important;
+        .stTextInput input, .stTextArea textarea {
+          background: var(--paper-dim) !important;
           border: 1px solid var(--rule) !important;
           border-radius: 2px !important;
           color: var(--ink) !important;
@@ -170,8 +176,24 @@ def inject_css():
         }
         .stTextInput input:focus, .stTextArea textarea:focus {
           border-color: var(--accent) !important;
-          box-shadow: none !important;
+          box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15) !important;
         }
+        .stSelectbox > div > div {
+          background: var(--paper-dim) !important;
+          border: 1px solid var(--rule) !important;
+          color: var(--ink) !important;
+        }
+
+        /* Number input */
+        .stNumberInput input {
+          background: var(--paper-dim) !important;
+          border: 1px solid var(--rule) !important;
+          color: var(--ink) !important;
+          font-family: 'JetBrains Mono', monospace !important;
+        }
+
+        /* Toggle */
+        .stToggle label { color: var(--ink) !important; }
 
         /* Message turns */
         .turn {
@@ -181,9 +203,12 @@ def inject_css():
           background: var(--paper-dim);
           border-radius: 0 2px 2px 0;
         }
-        .turn.user { border-left-color: var(--ink); }
-        .turn.assistant { border-left-color: var(--accent); }
-        .turn.system { border-left-color: var(--warn); background: rgba(154, 107, 28, 0.08); }
+        .turn.user { border-left-color: var(--ink-soft); }
+        .turn.assistant {
+          border-left-color: var(--accent);
+          background: rgba(129, 140, 248, 0.05);
+        }
+        .turn.system { border-left-color: var(--warn); background: rgba(251, 191, 36, 0.06); }
         .turn-role {
           font-family: 'JetBrains Mono', monospace;
           font-size: 0.65rem;
@@ -200,6 +225,7 @@ def inject_css():
           line-height: 1.55;
           white-space: pre-wrap;
           word-wrap: break-word;
+          color: var(--ink);
         }
 
         /* Logit table */
@@ -249,15 +275,16 @@ def inject_css():
           line-height: 1.7;
           min-height: 4rem;
           word-wrap: break-word;
+          color: var(--ink);
         }
         .token-stream .tok {
-          background: rgba(180, 57, 28, 0.08);
+          background: rgba(129, 140, 248, 0.12);
           padding: 0.05rem 0.15rem;
           border-radius: 2px;
-          border-bottom: 1px solid rgba(180, 57, 28, 0.25);
+          border-bottom: 1px solid rgba(129, 140, 248, 0.3);
         }
         .token-stream .tok.manual {
-          background: rgba(45, 93, 58, 0.15);
+          background: rgba(52, 211, 153, 0.15);
           border-bottom-color: var(--signal);
         }
         .token-stream .tok.prompt {
@@ -287,7 +314,7 @@ def inject_css():
         #MainMenu, footer, header { visibility: hidden; }
         .block-container { padding-top: 2rem !important; max-width: 1200px; }
 
-        /* Tooltips/help */
+        /* Help notes */
         .help-note {
           font-size: 0.8rem;
           color: var(--ink-soft);
@@ -296,6 +323,22 @@ def inject_css():
           margin: 0.4rem 0;
           padding-left: 0.8rem;
           border-left: 2px solid var(--accent-soft);
+        }
+
+        /* Loading spinner animation */
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .loading-ring {
+          display: inline-block;
+          width: 1.1rem;
+          height: 1.1rem;
+          border: 2px solid var(--rule);
+          border-top-color: var(--accent);
+          border-radius: 50%;
+          animation: spin 0.65s linear infinite;
+          vertical-align: middle;
+          margin-right: 0.5rem;
         }
         </style>
         """,

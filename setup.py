@@ -48,7 +48,7 @@ def ensure_setup() -> bool:
     st.markdown(
         """
         <div class="hero">
-          <div class="hero-mark">◐</div>
+          <div class="hero-mark">⌜Lang⌝</div>
           <div class="hero-text">
             <h1>LLM Playground</h1>
             <p>One-time setup.</p>
