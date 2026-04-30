@@ -3,7 +3,7 @@
 ## SETUP
 
 ```bash
-git clone <REPO_URL>
+git clone "https://github.com/benmeyersUSC/LLM-Playground"
 cd LLM-Playground
 python -m pip install -r requirements.txt
 ```
